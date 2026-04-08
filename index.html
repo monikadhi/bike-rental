@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Velan Enterprises - Rental System</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+font-family: Arial;
+margin:0;
+background:#e6f2ff;
+}
+
+nav{
+background:#0047ab;
+color:#ffd700;
+padding:18px;
+text-align:center;
+font-size:28px;
+font-weight:bold;
+}
+
+.container{
+display:flex;
+justify-content:space-around;
+flex-wrap:wrap;
+padding:20px;
+gap:20px;
+}
+
+.box{
+background:white;
+padding:20px;
+width:300px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+.bike{
+border-bottom:1px solid #ccc;
+padding:10px;
+}
+
+button{
+background:#0047ab;
+color:#ffd700;
+border:none;
+padding:6px;
+margin-top:5px;
+cursor:pointer;
+}
+
+input{
+width:100%;
+margin-top:5px;
+}
+
+.bike span{
+display:block;
+margin-top:5px;
+font-size:14px;
+font-weight:bold;
+}
+
+/* Graph box */
+.chart-box{
+width:90%;
+margin:auto;
+margin-top:20px;
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+</style>
+</head>
+
+<body>
+
+<nav>Velan Enterprises - Rental System</nav>
+
+<div class="container">
+
+<div class="box">
+<h2>Available Bikes</h2>
+<div id="available"></div>
+</div>
+
+<div class="box">
+<h2>Rented Bikes</h2>
+<div id="rented"></div>
+</div>
+
+</div>
+
+<!-- Graph Section -->
+<div class="chart-box">
+<h2>Rental Analytics</h2>
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+
+let bikes = ["Ray Z 8681 (15)","Activa 5369 (18)","Dio 3353 (19)","Pleasure plus 3431 (21)","Zest 2751 (19)","Activa 8895 (22)","Ray ZR"];
+
+let rented = JSON.parse(localStorage.getItem("rented")) || [];
+
+// History for analytics
+let history = JSON.parse(localStorage.getItem("history")) || [];
+
+function load(){
+
+let a = document.getElementById("available");
+let r = document.getElementById("rented");
+
+a.innerHTML = "";
+r.innerHTML = "";
+
+// Available Bikes
+bikes.forEach((b,i)=>{
+
+let found = rented.find(x=>x.name===b);
+
+if(!found){
+
+a.innerHTML += `
+<div class="bike">
+<b>${b}</b><br>
+Rent Date:<input type="date" id="r${i}">
+Due Date:<input type="date" id="d${i}">
+<button onclick="rent('${b}',${i})">Rent</button>
+</div>
+`;
+
+}
+
+});
+
+// Rented Bikes with Reminder
+rented.forEach((b,i)=>{
+
+let today = new Date();
+let due = new Date(b.due);
+
+let diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+
+let message = "";
+let color = "";
+
+if(diff < 0){
+message = "❌ Overdue - Return immediately";
+color = "red";
+}
+else if(diff === 0){
+message = "🚨 Due Today";
+color = "orange";
+}
+else if(diff === 1){
+message = "⚠️ Due Tomorrow";
+color = "goldenrod";
+}
+else{
+message = "✅ Active Rental";
+color = "green";
+}
+
+r.innerHTML += `
+<div class="bike">
+<b>${b.name}</b><br>
+Rent: ${b.rent}<br>
+Due: ${b.due}<br>
+
+<span style="color:${color};">
+${message}
+</span>
+
+<button onclick="back(${i})">Returned</button>
+</div>
+`;
+
+});
+
+drawChart();
+
+}
+
+// Rent Bike
+function rent(name,i){
+
+let rent = document.getElementById("r"+i).value;
+let due = document.getElementById("d"+i).value;
+
+if(!rent || !due){
+alert("Select dates");
+return;
+}
+
+rented.push({name:name,rent:rent,due:due});
+
+// Save history for analytics
+history.push({name:name});
+localStorage.setItem("history", JSON.stringify(history));
+
+localStorage.setItem("rented",JSON.stringify(rented));
+
+load();
+
+}
+
+// Return Bike
+function back(i){
+
+if(confirm("Returned?")){
+rented.splice(i,1);
+localStorage.setItem("rented",JSON.stringify(rented));
+load();
+}
+
+}
+
+// Draw Graph
+function drawChart(){
+
+let counts = {};
+
+history.forEach(b=>{
+counts[b.name] = (counts[b.name] || 0) + 1;
+});
+
+let labels = Object.keys(counts);
+let data = Object.values(counts);
+
+if(window.chartObj){
+window.chartObj.destroy();
+}
+
+let ctx = document.getElementById("chart").getContext("2d");
+
+window.chartObj = new Chart(ctx,{
+type:'bar',
+data:{
+labels:labels,
+datasets:[{
+label:'Total Rentals',
+data:data
+}]
+}
+});
+
+}
+
+window.onload = load;
+
+</script>
+
+</body>
+</html>
