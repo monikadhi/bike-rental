@@ -144,7 +144,7 @@ Due Date & Time:
 
 });
 
-// Rented Bikes with EDIT OPTION
+// Rented Bikes with EDIT BUTTON
 rented.forEach((b,i)=>{
 
 let now = new Date();
@@ -156,11 +156,11 @@ let message = "";
 let color = "";
 
 if(diffHours < 0){
-message = "❌ Overdue - Return immediately";
+message = "❌ Overdue";
 color = "red";
 }
 else if(diffHours <= 24){
-message = "🚨 Due within 24 hours";
+message = "🚨 Due within 24 hrs";
 color = "orange";
 }
 else if(diffHours <= 48){
@@ -168,29 +168,39 @@ message = "⚠️ Due within 2 days";
 color = "goldenrod";
 }
 else{
-message = "✅ Active Rental";
+message = "✅ Active";
 color = "green";
 }
 
 r.innerHTML += `
 <div class="bike">
+
 <b>${b.name}</b><br>
 
+<div id="view${i}">
 Rent: ${new Date(b.rent).toLocaleString()}<br>
 Due: ${new Date(b.due).toLocaleString()}<br>
+</div>
+
+<div id="editBox${i}" style="display:none;">
+Rent:
+<input type="datetime-local" id="editRent${i}" value="${b.rent}">
+Due:
+<input type="datetime-local" id="editDue${i}" value="${b.due}">
+</div>
 
 <span style="color:${color};">
 ${message}
 </span>
 
 <br><br>
-<b>Edit Due Date:</b>
-<input type="datetime-local" id="edit${i}" value="${b.due}">
 
-<button onclick="updateDue(${i})">Update</button>
+<button onclick="enableEdit(${i})">Edit</button>
+<button onclick="saveEdit(${i})" id="saveBtn${i}" style="display:none;">Save</button>
 
 <br><br>
 <button onclick="back(${i})">Returned</button>
+
 </div>
 `;
 
@@ -222,21 +232,32 @@ load();
 
 }
 
-// Update Due Date
-function updateDue(i){
+// ENABLE EDIT
+function enableEdit(i){
 
-let newDue = document.getElementById("edit"+i).value;
+document.getElementById("view"+i).style.display = "none";
+document.getElementById("editBox"+i).style.display = "block";
+document.getElementById("saveBtn"+i).style.display = "inline-block";
 
-if(!newDue){
-alert("Select new due date");
+}
+
+// SAVE EDIT
+function saveEdit(i){
+
+let newRent = document.getElementById("editRent"+i).value;
+let newDue = document.getElementById("editDue"+i).value;
+
+if(!newRent || !newDue){
+alert("Fill both fields");
 return;
 }
 
+rented[i].rent = newRent;
 rented[i].due = newDue;
 
 localStorage.setItem("rented", JSON.stringify(rented));
 
-alert("✅ Due date updated successfully!");
+alert("✅ Updated successfully");
 
 load();
 
