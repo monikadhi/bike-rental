@@ -9,15 +9,7 @@
 body{
 font-family: Arial;
 margin:0;
-
-/* Background */
-background: linear-gradient(rgba(230,242,255,0.92), rgba(230,242,255,0.92)),
-url('https://cdn.pixabay.com/photo/2012/05/29/00/43/motorcycle-49278_1280.png');
-
-background-size: 300px;
-background-repeat: no-repeat;
-background-position: right bottom;
-background-attachment: fixed;
+background:#e6f2ff; /* ✅ Plain background */
 }
 
 nav{
@@ -110,7 +102,6 @@ box-shadow:0 0 10px rgba(0,0,0,0.2);
 
 <script>
 
-// ✅ YOUR GOOGLE SHEET API
 const API = "https://script.google.com/macros/s/AKfycbwhIGPI7SPCgDIwtcbUURCXLvKM_DQDk28SqMh_kDzj4g9WzOmhbSuckmRxL3qK0KrM/exec";
 
 let bikes = ["Ray Z 8681 (15)","Activa 5369 (18)","Dio 3353 (19)","Pleasure plus 3431 (21)","Zest 2751 (19)","Activa 8895 (22)","Ray ZR"];
@@ -118,16 +109,12 @@ let bikes = ["Ray Z 8681 (15)","Activa 5369 (18)","Dio 3353 (19)","Pleasure plus
 let rented = [];
 let history = JSON.parse(localStorage.getItem("history")) || [];
 
-// 🔹 LOAD FROM GOOGLE SHEET
 async function loadFromSheet(){
-
 let res = await fetch(API);
 rented = await res.json();
-
 load();
 }
 
-// UI LOAD
 function load(){
 
 let a = document.getElementById("available");
@@ -138,11 +125,9 @@ r.innerHTML = "";
 
 // Available
 bikes.forEach((b,i)=>{
-
 let found = rented.find(x=>x.name===b);
 
 if(!found){
-
 a.innerHTML += `
 <div class="bike">
 <b>${b}</b><br>
@@ -156,9 +141,7 @@ Due Date & Time:
 <button onclick="rent('${b}',${i})">Rent</button>
 </div>
 `;
-
 }
-
 });
 
 // Rented
@@ -169,12 +152,12 @@ let due = new Date(b.due);
 
 let diff = (due - now)/(1000*60*60);
 
-let msg = "", color="";
+let msg="",color="";
 
-if(diff<0){msg="❌ Overdue"; color="red";}
-else if(diff<=24){msg="🚨 Due within 24 hrs"; color="orange";}
-else if(diff<=48){msg="⚠️ Due within 2 days"; color="goldenrod";}
-else{msg="✅ Active"; color="green";}
+if(diff<0){msg="❌ Overdue";color="red";}
+else if(diff<=24){msg="🚨 Due within 24 hrs";color="orange";}
+else if(diff<=48){msg="⚠️ Due within 2 days";color="goldenrod";}
+else{msg="✅ Active";color="green";}
 
 r.innerHTML += `
 <div class="bike">
@@ -201,14 +184,12 @@ Due: ${new Date(b.due).toLocaleString()}
 
 </div>
 `;
-
 });
 
 drawChart();
-
 }
 
-// RENT
+// Rent
 async function rent(name,i){
 
 let rent = document.getElementById("r"+i).value;
@@ -230,14 +211,14 @@ localStorage.setItem("history",JSON.stringify(history));
 loadFromSheet();
 }
 
-// EDIT
+// Edit
 function edit(i){
 document.getElementById("view"+i).style.display="none";
 document.getElementById("edit"+i).style.display="block";
 document.getElementById("save"+i).style.display="inline";
 }
 
-// SAVE EDIT
+// Save
 async function save(i){
 
 let rent = document.getElementById("er"+i).value;
@@ -257,18 +238,16 @@ _method:"PUT"
 loadFromSheet();
 }
 
-// RETURN
+// Return
 async function back(i){
 
 if(confirm("Returned?")){
-
 await fetch(API+"?row="+rented[i].row);
-
 loadFromSheet();
 }
 }
 
-// GRAPH
+// Graph
 function drawChart(){
 
 let count={};
