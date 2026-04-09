@@ -32,7 +32,7 @@ gap:20px;
 .box{
 background:white;
 padding:20px;
-width:300px;
+width:320px;
 border-radius:10px;
 box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
@@ -49,11 +49,17 @@ border:none;
 padding:6px;
 margin-top:5px;
 cursor:pointer;
+border-radius:5px;
+}
+
+button:hover{
+background:#003380;
 }
 
 input{
 width:100%;
 margin-top:5px;
+padding:5px;
 }
 
 .bike span{
@@ -63,7 +69,6 @@ font-size:14px;
 font-weight:bold;
 }
 
-/* Graph box */
 .chart-box{
 width:90%;
 margin:auto;
@@ -73,7 +78,6 @@ padding:20px;
 border-radius:10px;
 box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
-
 </style>
 </head>
 
@@ -95,7 +99,6 @@ box-shadow:0 0 10px rgba(0,0,0,0.2);
 
 </div>
 
-<!-- Graph Section -->
 <div class="chart-box">
 <h2>Rental Analytics</h2>
 <canvas id="chart"></canvas>
@@ -106,8 +109,6 @@ box-shadow:0 0 10px rgba(0,0,0,0.2);
 let bikes = ["Ray Z 8681 (15)","Activa 5369 (18)","Dio 3353 (19)","Pleasure plus 3431 (21)","Zest 2751 (19)","Activa 8895 (22)","Ray ZR"];
 
 let rented = JSON.parse(localStorage.getItem("rented")) || [];
-
-// History for analytics
 let history = JSON.parse(localStorage.getItem("history")) || [];
 
 function load(){
@@ -128,8 +129,13 @@ if(!found){
 a.innerHTML += `
 <div class="bike">
 <b>${b}</b><br>
-Rent Date:<input type="date" id="r${i}">
-Due Date:<input type="date" id="d${i}">
+
+Rent Date & Time:
+<input type="datetime-local" id="r${i}">
+
+Due Date & Time:
+<input type="datetime-local" id="d${i}">
+
 <button onclick="rent('${b}',${i})">Rent</button>
 </div>
 `;
@@ -138,27 +144,27 @@ Due Date:<input type="date" id="d${i}">
 
 });
 
-// Rented Bikes with Reminder
+// Rented Bikes with EDIT OPTION
 rented.forEach((b,i)=>{
 
-let today = new Date();
+let now = new Date();
 let due = new Date(b.due);
 
-let diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+let diffHours = (due - now) / (1000 * 60 * 60);
 
 let message = "";
 let color = "";
 
-if(diff < 0){
+if(diffHours < 0){
 message = "❌ Overdue - Return immediately";
 color = "red";
 }
-else if(diff === 0){
-message = "🚨 Due Today";
+else if(diffHours <= 24){
+message = "🚨 Due within 24 hours";
 color = "orange";
 }
-else if(diff === 1){
-message = "⚠️ Due Tomorrow";
+else if(diffHours <= 48){
+message = "⚠️ Due within 2 days";
 color = "goldenrod";
 }
 else{
@@ -169,13 +175,21 @@ color = "green";
 r.innerHTML += `
 <div class="bike">
 <b>${b.name}</b><br>
-Rent: ${b.rent}<br>
-Due: ${b.due}<br>
+
+Rent: ${new Date(b.rent).toLocaleString()}<br>
+Due: ${new Date(b.due).toLocaleString()}<br>
 
 <span style="color:${color};">
 ${message}
 </span>
 
+<br><br>
+<b>Edit Due Date:</b>
+<input type="datetime-local" id="edit${i}" value="${b.due}">
+
+<button onclick="updateDue(${i})">Update</button>
+
+<br><br>
 <button onclick="back(${i})">Returned</button>
 </div>
 `;
@@ -193,17 +207,36 @@ let rent = document.getElementById("r"+i).value;
 let due = document.getElementById("d"+i).value;
 
 if(!rent || !due){
-alert("Select dates");
+alert("Select date & time");
 return;
 }
 
 rented.push({name:name,rent:rent,due:due});
 
-// Save history for analytics
 history.push({name:name});
-localStorage.setItem("history", JSON.stringify(history));
 
+localStorage.setItem("history", JSON.stringify(history));
 localStorage.setItem("rented",JSON.stringify(rented));
+
+load();
+
+}
+
+// Update Due Date
+function updateDue(i){
+
+let newDue = document.getElementById("edit"+i).value;
+
+if(!newDue){
+alert("Select new due date");
+return;
+}
+
+rented[i].due = newDue;
+
+localStorage.setItem("rented", JSON.stringify(rented));
+
+alert("✅ Due date updated successfully!");
 
 load();
 
@@ -220,7 +253,7 @@ load();
 
 }
 
-// Draw Graph
+// Graph
 function drawChart(){
 
 let counts = {};
