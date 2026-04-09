@@ -9,7 +9,15 @@
 body{
 font-family: Arial;
 margin:0;
-background:#e6f2ff;
+
+/* Background */
+background: linear-gradient(rgba(230,242,255,0.92), rgba(230,242,255,0.92)),
+url('https://cdn.pixabay.com/photo/2012/05/29/00/43/motorcycle-49278_1280.png');
+
+background-size: 300px;
+background-repeat: no-repeat;
+background-position: right bottom;
+background-attachment: fixed;
 }
 
 nav{
@@ -50,10 +58,6 @@ padding:6px;
 margin-top:5px;
 cursor:pointer;
 border-radius:5px;
-}
-
-button:hover{
-background:#003380;
 }
 
 input{
@@ -106,11 +110,24 @@ box-shadow:0 0 10px rgba(0,0,0,0.2);
 
 <script>
 
+// ✅ YOUR GOOGLE SHEET API
+const API = "https://script.google.com/macros/s/AKfycbwhIGPI7SPCgDIwtcbUURCXLvKM_DQDk28SqMh_kDzj4g9WzOmhbSuckmRxL3qK0KrM/exec";
+
 let bikes = ["Ray Z 8681 (15)","Activa 5369 (18)","Dio 3353 (19)","Pleasure plus 3431 (21)","Zest 2751 (19)","Activa 8895 (22)","Ray ZR"];
 
-let rented = JSON.parse(localStorage.getItem("rented")) || [];
+let rented = [];
 let history = JSON.parse(localStorage.getItem("history")) || [];
 
+// 🔹 LOAD FROM GOOGLE SHEET
+async function loadFromSheet(){
+
+let res = await fetch(API);
+rented = await res.json();
+
+load();
+}
+
+// UI LOAD
 function load(){
 
 let a = document.getElementById("available");
@@ -119,7 +136,7 @@ let r = document.getElementById("rented");
 a.innerHTML = "";
 r.innerHTML = "";
 
-// Available Bikes
+// Available
 bikes.forEach((b,i)=>{
 
 let found = rented.find(x=>x.name===b);
@@ -144,33 +161,20 @@ Due Date & Time:
 
 });
 
-// Rented Bikes with EDIT BUTTON
+// Rented
 rented.forEach((b,i)=>{
 
 let now = new Date();
 let due = new Date(b.due);
 
-let diffHours = (due - now) / (1000 * 60 * 60);
+let diff = (due - now)/(1000*60*60);
 
-let message = "";
-let color = "";
+let msg = "", color="";
 
-if(diffHours < 0){
-message = "❌ Overdue";
-color = "red";
-}
-else if(diffHours <= 24){
-message = "🚨 Due within 24 hrs";
-color = "orange";
-}
-else if(diffHours <= 48){
-message = "⚠️ Due within 2 days";
-color = "goldenrod";
-}
-else{
-message = "✅ Active";
-color = "green";
-}
+if(diff<0){msg="❌ Overdue"; color="red";}
+else if(diff<=24){msg="🚨 Due within 24 hrs"; color="orange";}
+else if(diff<=48){msg="⚠️ Due within 2 days"; color="goldenrod";}
+else{msg="✅ Active"; color="green";}
 
 r.innerHTML += `
 <div class="bike">
@@ -179,24 +183,18 @@ r.innerHTML += `
 
 <div id="view${i}">
 Rent: ${new Date(b.rent).toLocaleString()}<br>
-Due: ${new Date(b.due).toLocaleString()}<br>
+Due: ${new Date(b.due).toLocaleString()}
 </div>
 
-<div id="editBox${i}" style="display:none;">
-Rent:
-<input type="datetime-local" id="editRent${i}" value="${b.rent}">
-Due:
-<input type="datetime-local" id="editDue${i}" value="${b.due}">
+<div id="edit${i}" style="display:none;">
+<input type="datetime-local" id="er${i}" value="${b.rent}">
+<input type="datetime-local" id="ed${i}" value="${b.due}">
 </div>
 
-<span style="color:${color};">
-${message}
-</span>
+<span style="color:${color};">${msg}</span><br><br>
 
-<br><br>
-
-<button onclick="enableEdit(${i})">Edit</button>
-<button onclick="saveEdit(${i})" id="saveBtn${i}" style="display:none;">Save</button>
+<button onclick="edit(${i})">Edit</button>
+<button onclick="save(${i})" id="save${i}" style="display:none;">Save</button>
 
 <br><br>
 <button onclick="back(${i})">Returned</button>
@@ -210,102 +208,89 @@ drawChart();
 
 }
 
-// Rent Bike
-function rent(name,i){
+// RENT
+async function rent(name,i){
 
 let rent = document.getElementById("r"+i).value;
 let due = document.getElementById("d"+i).value;
 
 if(!rent || !due){
-alert("Select date & time");
+alert("Select date");
 return;
 }
 
-rented.push({name:name,rent:rent,due:due});
+await fetch(API,{
+method:"POST",
+body: JSON.stringify({name,rent,due})
+});
 
-history.push({name:name});
+history.push({name});
+localStorage.setItem("history",JSON.stringify(history));
 
-localStorage.setItem("history", JSON.stringify(history));
-localStorage.setItem("rented",JSON.stringify(rented));
-
-load();
-
+loadFromSheet();
 }
 
-// ENABLE EDIT
-function enableEdit(i){
-
-document.getElementById("view"+i).style.display = "none";
-document.getElementById("editBox"+i).style.display = "block";
-document.getElementById("saveBtn"+i).style.display = "inline-block";
-
+// EDIT
+function edit(i){
+document.getElementById("view"+i).style.display="none";
+document.getElementById("edit"+i).style.display="block";
+document.getElementById("save"+i).style.display="inline";
 }
 
 // SAVE EDIT
-function saveEdit(i){
+async function save(i){
 
-let newRent = document.getElementById("editRent"+i).value;
-let newDue = document.getElementById("editDue"+i).value;
+let rent = document.getElementById("er"+i).value;
+let due = document.getElementById("ed"+i).value;
 
-if(!newRent || !newDue){
-alert("Fill both fields");
-return;
+await fetch(API,{
+method:"POST",
+body: JSON.stringify({
+row: rented[i].row,
+name: rented[i].name,
+rent,
+due,
+_method:"PUT"
+})
+});
+
+loadFromSheet();
 }
 
-rented[i].rent = newRent;
-rented[i].due = newDue;
-
-localStorage.setItem("rented", JSON.stringify(rented));
-
-alert("✅ Updated successfully");
-
-load();
-
-}
-
-// Return Bike
-function back(i){
+// RETURN
+async function back(i){
 
 if(confirm("Returned?")){
-rented.splice(i,1);
-localStorage.setItem("rented",JSON.stringify(rented));
-load();
+
+await fetch(API+"?row="+rented[i].row);
+
+loadFromSheet();
+}
 }
 
-}
-
-// Graph
+// GRAPH
 function drawChart(){
 
-let counts = {};
+let count={};
 
 history.forEach(b=>{
-counts[b.name] = (counts[b.name] || 0) + 1;
+count[b.name]=(count[b.name]||0)+1;
 });
 
-let labels = Object.keys(counts);
-let data = Object.values(counts);
+let labels=Object.keys(count);
+let data=Object.values(count);
 
-if(window.chartObj){
-window.chartObj.destroy();
-}
+if(window.chartObj){window.chartObj.destroy();}
 
-let ctx = document.getElementById("chart").getContext("2d");
+let ctx=document.getElementById("chart").getContext("2d");
 
-window.chartObj = new Chart(ctx,{
-type:'bar',
-data:{
-labels:labels,
-datasets:[{
-label:'Total Rentals',
-data:data
-}]
-}
+window.chartObj=new Chart(ctx,{
+type:"bar",
+data:{labels,datasets:[{label:"Total Rentals",data}]}
 });
-
 }
 
-window.onload = load;
+window.onload = loadFromSheet;
 
 </script>
 
