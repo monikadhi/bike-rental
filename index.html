@@ -1,275 +1,241 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Velan Enterprises - Rental System</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<title>Velan Enterprises - Bike Rental</title>
 
 <style>
-body{
-font-family: Arial;
-margin:0;
-background:#e6f2ff; /* ✅ Plain background */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #0a1f44;
+    color: white;
+    margin: 0;
 }
 
-nav{
-background:#0047ab;
-color:#ffd700;
-padding:18px;
-text-align:center;
-font-size:28px;
-font-weight:bold;
+h1, h2 {
+    color: yellow;
+    text-align: center;
 }
 
-.container{
-display:flex;
-justify-content:space-around;
-flex-wrap:wrap;
-padding:20px;
-gap:20px;
+.container {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px;
 }
 
-.box{
-background:white;
-padding:20px;
-width:320px;
-border-radius:10px;
-box-shadow:0 0 10px rgba(0,0,0,0.2);
+.box {
+    width: 45%;
+    background: #132f63;
+    padding: 15px;
+    border-radius: 10px;
 }
 
-.bike{
-border-bottom:1px solid #ccc;
-padding:10px;
+.bike {
+    background: #1e3f7a;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 8px;
 }
 
-button{
-background:#0047ab;
-color:#ffd700;
-border:none;
-padding:6px;
-margin-top:5px;
-cursor:pointer;
-border-radius:5px;
+.overdue {
+    background: red !important;
 }
 
-input{
-width:100%;
-margin-top:5px;
-padding:5px;
+input, button {
+    margin-top: 5px;
+    padding: 5px;
+    border-radius: 5px;
+    border: none;
 }
 
-.bike span{
-display:block;
-margin-top:5px;
-font-size:14px;
-font-weight:bold;
+button {
+    background-color: yellow;
+    color: black;
+    cursor: pointer;
+    font-weight: bold;
 }
 
-.chart-box{
-width:90%;
-margin:auto;
-margin-top:20px;
-background:white;
-padding:20px;
-border-radius:10px;
-box-shadow:0 0 10px rgba(0,0,0,0.2);
+.reminder-btn {
+    display: block;
+    margin: 10px auto;
 }
 </style>
 </head>
 
 <body>
 
-<nav>Velan Enterprises - Rental System</nav>
+<h1>Velan Enterprises - Bike Rental</h1>
+
+<button class="reminder-btn" onclick="checkReminders()">🔔 Check Reminders</button>
 
 <div class="container">
 
 <div class="box">
-<h2>Available Bikes</h2>
-<div id="available"></div>
+    <h2>Available Bikes</h2>
+    <div id="availableBikes"></div>
 </div>
 
 <div class="box">
-<h2>Rented Bikes</h2>
-<div id="rented"></div>
+    <h2>Rented Bikes</h2>
+    <div id="rentedBikes"></div>
 </div>
 
-</div>
-
-<div class="chart-box">
-<h2>Rental Analytics</h2>
-<canvas id="chart"></canvas>
 </div>
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbwhIGPI7SPCgDIwtcbUURCXLvKM_DQDk28SqMh_kDzj4g9WzOmhbSuckmRxL3qK0KrM/exec";
+// ✅ GOOGLE SHEET URL
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzovJHYg7Fh8IPzt7nUEBTvt3XxUE0zF7i0xtbbdRRhMti3tUHY7eyA6rEeTVjTE1YQ2Q/exec";
 
-let bikes = ["Ray Z 8681 (15)","Activa 5369 (18)","Dio 3353 (19)","Pleasure plus 3431 (21)","Zest 2751 (19)","Activa 8895 (22)","Ray ZR"];
+// ✅ BIKE LIST
+let availableBikes = [
+    "Ray Z 8681 (VE001)",
+    "Activa 5369 (VE002)",
+    "Dio 3353 (VE003)",
+    "Pleasure Plus 3431 (VE004)",
+    "Zest 2751 (VE005)",
+    "Activa 8895 (VE006)",
+    "Ray ZR 3103 (VE007)",
+    "Jupiter 4707 (VE008)",
+    "Activa 0325 (VE009)"
+];
 
-let rented = [];
-let history = JSON.parse(localStorage.getItem("history")) || [];
+let rentedBikes = [];
 
-async function loadFromSheet(){
-let res = await fetch(API);
-rented = await res.json();
-load();
+// SAVE TO GOOGLE SHEET
+function saveToSheet(data) {
+    fetch(SHEET_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(data)
+    })
+    .then(() => console.log("Saved"))
+    .catch(err => console.log(err));
 }
 
-function load(){
+// RENDER AVAILABLE
+function renderAvailable() {
+    let html = "";
+    availableBikes.forEach((bike, i) => {
+        html += `
+        <div class="bike">
+            <b>${bike}</b><br>
 
-let a = document.getElementById("available");
-let r = document.getElementById("rented");
+            Rent Date: <input type="date" id="rd${i}">
+            Time: <input type="time" id="rt${i}"><br>
 
-a.innerHTML = "";
-r.innerHTML = "";
+            Due Date: <input type="date" id="dd${i}">
+            Time: <input type="time" id="dt${i}"><br>
 
-// Available
-bikes.forEach((b,i)=>{
-let found = rented.find(x=>x.name===b);
-
-if(!found){
-a.innerHTML += `
-<div class="bike">
-<b>${b}</b><br>
-
-Rent Date & Time:
-<input type="datetime-local" id="r${i}">
-
-Due Date & Time:
-<input type="datetime-local" id="d${i}">
-
-<button onclick="rent('${b}',${i})">Rent</button>
-</div>
-`;
-}
-});
-
-// Rented
-rented.forEach((b,i)=>{
-
-let now = new Date();
-let due = new Date(b.due);
-
-let diff = (due - now)/(1000*60*60);
-
-let msg="",color="";
-
-if(diff<0){msg="❌ Overdue";color="red";}
-else if(diff<=24){msg="🚨 Due within 24 hrs";color="orange";}
-else if(diff<=48){msg="⚠️ Due within 2 days";color="goldenrod";}
-else{msg="✅ Active";color="green";}
-
-r.innerHTML += `
-<div class="bike">
-
-<b>${b.name}</b><br>
-
-<div id="view${i}">
-Rent: ${new Date(b.rent).toLocaleString()}<br>
-Due: ${new Date(b.due).toLocaleString()}
-</div>
-
-<div id="edit${i}" style="display:none;">
-<input type="datetime-local" id="er${i}" value="${b.rent}">
-<input type="datetime-local" id="ed${i}" value="${b.due}">
-</div>
-
-<span style="color:${color};">${msg}</span><br><br>
-
-<button onclick="edit(${i})">Edit</button>
-<button onclick="save(${i})" id="save${i}" style="display:none;">Save</button>
-
-<br><br>
-<button onclick="back(${i})">Returned</button>
-
-</div>
-`;
-});
-
-drawChart();
+            <button onclick="rentBike(${i})">Rent</button>
+        </div>`;
+    });
+    document.getElementById("availableBikes").innerHTML = html;
 }
 
-// Rent
-async function rent(name,i){
+// RENT
+function rentBike(i) {
+    let rentDate = document.getElementById(`rd${i}`).value;
+    let rentTime = document.getElementById(`rt${i}`).value;
+    let dueDate = document.getElementById(`dd${i}`).value;
+    let dueTime = document.getElementById(`dt${i}`).value;
 
-let rent = document.getElementById("r"+i).value;
-let due = document.getElementById("d"+i).value;
+    if (!rentDate || !rentTime || !dueDate || !dueTime) {
+        alert("Fill all fields");
+        return;
+    }
 
-if(!rent || !due){
-alert("Select date");
-return;
+    let bike = availableBikes.splice(i,1)[0];
+
+    let data = {
+        name: bike,
+        rentDate,
+        rentTime,
+        dueDate,
+        dueTime,
+        status: "Rented"
+    };
+
+    rentedBikes.push({...data, editing:false});
+
+    saveToSheet(data);
+
+    renderAvailable();
+    renderRented();
 }
 
-await fetch(API,{
-method:"POST",
-body: JSON.stringify({name,rent,due})
-});
+// RETURN
+function returnBike(i) {
+    let bike = rentedBikes.splice(i,1)[0];
+    availableBikes.push(bike.name);
 
-history.push({name});
-localStorage.setItem("history",JSON.stringify(history));
+    saveToSheet({
+        name: bike.name,
+        rentDate: bike.rentDate,
+        rentTime: bike.rentTime,
+        dueDate: bike.dueDate,
+        dueTime: bike.dueTime,
+        status: "Returned"
+    });
 
-loadFromSheet();
+    renderAvailable();
+    renderRented();
 }
 
-// Edit
-function edit(i){
-document.getElementById("view"+i).style.display="none";
-document.getElementById("edit"+i).style.display="block";
-document.getElementById("save"+i).style.display="inline";
+// CHECK OVERDUE
+function isOverdue(b) {
+    return new Date() > new Date(`${b.dueDate}T${b.dueTime}`);
 }
 
-// Save
-async function save(i){
-
-let rent = document.getElementById("er"+i).value;
-let due = document.getElementById("ed"+i).value;
-
-await fetch(API,{
-method:"POST",
-body: JSON.stringify({
-row: rented[i].row,
-name: rented[i].name,
-rent,
-due,
-_method:"PUT"
-})
-});
-
-loadFromSheet();
+// CHECK 8 HR REMINDER
+function isDueSoon(b) {
+    let diff = (new Date(`${b.dueDate}T${b.dueTime}`) - new Date())/(1000*60*60);
+    return diff <= 8 && diff > 0;
 }
 
-// Return
-async function back(i){
+// RENDER RENTED
+function renderRented() {
+    let html="";
+    rentedBikes.forEach((b,i)=>{
+        let cls = isOverdue(b) ? "overdue" : "";
 
-if(confirm("Returned?")){
-await fetch(API+"?row="+rented[i].row);
-loadFromSheet();
-}
-}
+        html += `
+        <div class="bike ${cls}">
+            <b>${b.name}</b><br>
+            Rent: ${b.rentDate} ${b.rentTime}<br>
+            Due: ${b.dueDate} ${b.dueTime}<br>
 
-// Graph
-function drawChart(){
+            ${isOverdue(b)?"🔴 OVERDUE":""}
+            ${isDueSoon(b)?"<br>🟡 Due within 8 hrs":""}
 
-let count={};
+            <br>
+            <button onclick="returnBike(${i})">Return</button>
+        </div>`;
+    });
 
-history.forEach(b=>{
-count[b.name]=(count[b.name]||0)+1;
-});
-
-let labels=Object.keys(count);
-let data=Object.values(count);
-
-if(window.chartObj){window.chartObj.destroy();}
-
-let ctx=document.getElementById("chart").getContext("2d");
-
-window.chartObj=new Chart(ctx,{
-type:"bar",
-data:{labels,datasets:[{label:"Total Rentals",data}]}
-});
+    document.getElementById("rentedBikes").innerHTML = html;
 }
 
-window.onload = loadFromSheet;
+// REMINDER ALERT
+function checkReminders() {
+    let msg = "";
+
+    rentedBikes.forEach(b=>{
+        if (isDueSoon(b)) msg += "🟡 Due Soon: " + b.name + "\n";
+        if (isOverdue(b)) msg += "🔴 Overdue: " + b.name + "\n";
+    });
+
+    alert(msg || "No reminders ✅");
+}
+
+// AUTO CHECK
+setInterval(() => {
+    renderRented();
+}, 60000);
+
+// LOAD
+renderAvailable();
+renderRented();
 
 </script>
 
